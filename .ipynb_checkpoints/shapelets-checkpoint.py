@@ -118,6 +118,3 @@ def import_labels(file_name, id_extension):
         for ob in obs:
             ob_state[ob+id_extension] = state
     return ob_state
-    #xp10408013100_lc.txt classified as chi1 and chi4, xp20402011900_lc.txt as chi2 and chi2
-    #del ob_state["10408-01-31-00{}".format(extension)] as long as training and test sets are checked for duplicates when appending, it should be ok to keep
-    
