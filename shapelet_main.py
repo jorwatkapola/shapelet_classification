@@ -10,13 +10,28 @@ import shapelets as sha
 from operator import itemgetter
 
 #create a belloni_files list with names of files holding Belloni classified light curves
-ob_state=sha.import_labels('1915Belloniclass_updated.dat', "_std1_lc.txt")
+clean_belloni = open(file_name)
+lines = clean_belloni.readlines()
+states = lines[0].split()
+belloni_clean = {}
+for h,l in zip(states, lines[1:]):
+    belloni_clean[h] = l.split()
+    #state: obsID1, obsID2...
+ob_state = {}
+for state, obs in belloni_clean.items():
+    if state == "chi1" or state == "chi2" or state == "chi3" or state == "chi4": state = "chi"
+    for ob in obs:
+        ob_state[ob] = state
+return ob_state
+#xp10408013100_lc.txt classified as chi1 and chi4, xp20402011900_lc.txt as chi2 and chi2
+#del ob_state["10408-01-31-00{}".format(extension)] as long as training and test sets are checked for duplicates when appending, it should be ok to keep
 
 #create lists of available light curves and those with available lables
 available = []
 pool=[]
+extension="_std1_lc.txt"
 for root, dirnames, filenames in os.walk("/home/jkok1g14/Documents/GRS1915+105/data/Std1_PCU2"):
-    for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
+    for filename in fnmatch.filter(filenames, "*{}".format(extension)):
         available.append(filename)
 for ob, state in ob_state.items():
     if ob in available:
@@ -60,8 +75,8 @@ lcs=[]
 ids=[]
 #for root, dirnames, filenames in os.walk("/export/data/jakubok/GRS1915+105/Std1_PCU2"):
 for root, dirnames, filenames in os.walk("/home/jkok1g14/Documents/GRS1915+105/data/Std1_PCU2"):    
-    for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
-        if filename in list(ob_state.keys()):
+    for filename in fnmatch.filter(filenames, "*{}".format(extension)):
+        if filename.split("_")[0] in list(ob_state.keys()):
             lc_dirs.append(os.path.join(root, filename))
 
             
