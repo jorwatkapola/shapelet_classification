@@ -40,8 +40,8 @@ def information_gain(distances, set_entropy, split_point):
     else:
         return "Invalid split point (0 or infinity)."
 
-def distance_calculation(n_lc, lc, shapelet, time_res, belong_class):
-    """
+def distance_calculation(shapelet, lc, time_res=1., early_abandon=False):
+    """finds minimal distance between a light curve and a shapelet. lc is the light curve 2d array (lc[0] time values and lc[1] count rate values), time_res can be changed if the time resolution of the time-series is different than 1s (needs to be checked to make sure that distance is calculated only within good time intervals),  
     """
     best_dist=np.inf #for "early abandon"
     lc_l = len(lc[0])
@@ -59,11 +59,8 @@ def distance_calculation(n_lc, lc, shapelet, time_res, belong_class):
                 break#break out of the distance calculation and skip the position of the moving window
         if skip ==False:
             best_dist=sha_dist
-    if n_lc in belong_class:
-        class_assign=1
-    else:
-        class_assign=0
-    return (n_lc, best_dist, class_assign)
+
+    return (best_dist)
     
 def best_split_point(distances, set_entropy):
     """
