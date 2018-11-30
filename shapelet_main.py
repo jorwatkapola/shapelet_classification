@@ -124,20 +124,16 @@ print("No. of light curves prepared: {}".format(len(lcs)))
 tested_classes=[]
 best_shapelets=[]
 time_res=1
-for n_donor, lc_donor in enumerate(lcs):
+for n_donor, lc_donor in enumerate(x_train):
     #Create lists with classifications of all time-series relative to the donor time series; one that the pool of shapelets is generated from
-    state_donor = ob_state[ids[n_donor]]
-    if state_donor not in tested_classes:
-        tested_classes.append(state_donor)
-    else:
-        continue
+    state_donor = y_train[n_donor]
     belong_class=[]
     other_class=[]
-    for n_lc in range(len(lcs)):
-        if ob_state[ids[n_lc]] == state_donor:
-            belong_class.append(n_lc)
+    for n, i in enumerate(id_train):
+        if y_train[n] == state_donor:
+            belong_class.append(i)
         else:
-            other_class.append(n_lc)
+            other_class.append(i)
     #calculate the entropy of the entire set, so it can be compared to the split set later
     prop_belong = len(belong_class)/(len(belong_class)+len(other_class))
     set_entropy = -(prop_belong)*math.log2(prop_belong)-(1-prop_belong)*math.log2(1-prop_belong)
@@ -158,10 +154,13 @@ for n_donor, lc_donor in enumerate(lcs):
         #start distance calculations
         distances=[]
         for n_lc in order:
-            lc=lcs[n_lc]
-            distance=sha.distance_calculation(n_lc, lc, shapelet, time_res, belong_class)
-           # print(n_donor, distance, shapelet)
-            distances.append(distance)
+            lc=x_train[np.where(np.array(id_train)==n_lc)[0][0]]
+            distance=sha.distance_calculation(shapelet, lc)
+            if n_lc in belong_class:
+                class_assign=1
+            else:
+                class_assign=0
+            distances.append((n_lc ,distance, class_assign))
             if len(distances)>1:
                 best_split=sha.best_split_point(distances, set_entropy)
                 skip_shapelet=sha.entropy_pruning(best_gain, distances, best_split, len(belong_class), len(other_class), set_entropy)
@@ -174,4 +173,4 @@ for n_donor, lc_donor in enumerate(lcs):
             if gain>best_gain:
                 best_gain=gain
                 best_shapelet=shapelet
-    best_shapelets.append((best_shapelet, best_gain, state_donor))
+    best_shapelets.append((best_shapelet, best_split, id_train[n_donor], state_donor))
