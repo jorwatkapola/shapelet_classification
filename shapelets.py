@@ -4,7 +4,7 @@ from operator import itemgetter
 from copy import copy
 
 def generate_shapelets(light_curve, minlen, maxlen, time_res=1.):
-    """Create a list of all possible subsegments from light_curve, which is a 2D array, where [0,:] are the time values in seconds, and [1,:] are the count rate values. minlen and maxlen are the lower and upper limits of subsegment length in the unit of seconds. Output is a list of 1D arrays.The shortest shapelet will be an array of length minlen+1 etc. time_res is the time interval between two data points in seconds, so that for time_res=0.5 and minlen=100, the smallest produced shapelet would be an array of length (100/0.5)+1. Thus time_res should be set to a value that produces an integer.
+    """Create a list of all possible subsegments from light_curve, which is a 2D array, where [0,:] are the time values in seconds, and [1,:] are the count rate values. minlen and maxlen are the lower and upper limits of subsegment length in the unit of seconds. Output is a list of 1D arrays.The shortest shapelet will be an array of length minlen+1 etc. time_res is the time interval between two data points in seconds, so that for time_res=0.5 and minlen=100, the smallest produced shapelet would be an array of length (100/0.5)+1.
     """
     pool=[]
     lc = light_curve
@@ -12,10 +12,10 @@ def generate_shapelets(light_curve, minlen, maxlen, time_res=1.):
     for l in range(minlen,maxlen+1):
         end=l+1; start=0
         while end<=len(lc[0]):
-            sh=lc[1,start:end]
-            inter=(lc[0,end-1]-lc[0,start])
+            sh=lc[1,start:end]#end is exclusive
+            inter=(lc[0,end-1]-lc[0,start])#end is inclusive, hence the -1
             end+=1; start+=1
-            if inter/time_res==float(l):
+            if inter/time_res==float(l):#time difference between the first and last data points (inter in seconds) divided by the time difference between two consecutive data points (time_res in seconds) must be equal to the expected length of the moving window (l in seconds)
                 pool.append(sh)
     return pool
 
