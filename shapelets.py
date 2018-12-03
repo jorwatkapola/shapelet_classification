@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from operator import itemgetter
+from copy import copy
 
 def generate_shapelets(light_curve, minlen, maxlen, time_res=1.):
     """Create a list of all possible subsegments from light_curve, which is a 2D array, where [0,:] are the time values in seconds, and [1,:] are the count rate values. minlen and maxlen are the lower and upper limits of subsegment length in the unit of seconds. Output is a list of 1D arrays.The shortest shapelet will be an array of length minlen+1 etc. time_res is the time interval between two data points in seconds, so that for time_res=0.5 and minlen=100, the smallest produced shapelet would be an array of length (100/0.5)+1. Thus time_res should be set to a value that produces an integer.
@@ -43,24 +44,38 @@ def information_gain(distances, set_entropy, split_point):
 def distance_calculation(shapelet, lc, time_res=1., early_abandon=False):
     """finds minimal distance between a light curve and a shapelet. lc is the light curve 2d array (lc[0] time values and lc[1] count rate values), time_res can be changed if the time resolution of the time-series is different than 1s (needs to be checked to make sure that distance is calculated only within good time intervals),  
     """
-    best_dist=np.inf #for "early abandon"
-    lc_l = len(lc[0])
-    sha_l=len(shapelet)
-    for start_p in range(lc_l-sha_l+1):#length difference+1 will give the number of iterations required to shift the moving windown from start to end of the LC (with a difference of one point, two window positions are required etc.)
-        end_p=start_p+sha_l-1 #-1 to give the index of the last included point
-        if lc[0,end_p]-lc[0,start_p] != (sha_l-1)*time_res:
-            continue
-        skip=False
-        sha_dist=0 #distance between shapelet and LC subsegment
-        for i in range(sha_l):
-            sha_dist += (lc[1,i+start_p]-shapelet[i])**2
-            if sha_dist>=best_dist: 
-                skip=True#"early abandon"
-                break#break out of the distance calculation and skip the position of the moving window
-        if skip ==False:
-            best_dist=sha_dist
-
-    return (best_dist)
+    if early_abandon==False:
+        best_dist=np.inf
+        lc_l = len(lc[0])
+        sha_l=len(shapelet)
+        for start_p in range(lc_l-sha_l+1):
+            end_p=start_p+sha_l-1
+            if lc[0,end_p]-lc[0,start_p] != (sha_l-1)*time_res:
+                continue
+            sha_dist=0
+            for i in range(sha_l):
+                sha_dist += (lc[1,i+start_p]-shapelet[i])**2
+            if sha_dist<best_dist:
+                best_dist=sha_dist
+        return (best_dist)
+    else:
+        best_dist=np.inf 
+        lc_l = len(lc[0])
+        sha_l=len(shapelet)
+        for start_p in range(lc_l-sha_l+1):#length difference+1 will give the number of iterations required to shift the moving windown from start to end of the LC (with a difference of one point, two window positions are required etc.)
+            end_p=start_p+sha_l-1 #-1 to give the index of the last included point
+            if lc[0,end_p]-lc[0,start_p] != (sha_l-1)*time_res:
+                continue
+            skip=False#for "early abandon"
+            sha_dist=0 #distance between shapelet and LC subsegment
+            for i in range(sha_l):
+                sha_dist += (lc[1,i+start_p]-shapelet[i])**2
+                if sha_dist>=best_dist: 
+                    skip=True#"early abandon"
+                    break#break out of the distance calculation and skip the position of the moving window
+            if skip ==False:
+                best_dist=sha_dist
+        return (best_dist)
     
 def best_split_point(distances, set_entropy):
     """
@@ -83,7 +98,7 @@ def entropy_pruning(best_gain, distances, best_split, belong_class_count, other_
     """
     calc_belong=sum([lc[2] for lc in distances])
     calc_other=len(distances)-calc_belong
-    distances_bcs=distances #best case scenario when all the distances are included
+    distances_bcs=copy(distances) #best case scenario when all the distances are included
     distances_bcs.sort(key=itemgetter(1))
     maxdist=distances_bcs[-1][1]+1
     for add_belong in range(belong_class_count-calc_belong):
