@@ -78,7 +78,7 @@ def distance_calculation(shapelet, lc, time_res=1., early_abandon=False):
         return (best_dist)
     
 def best_split_point(distances, set_entropy):
-    """
+    """find a threshold distance that splits the provided set in a way that produces the best possible information gain, i.e. two subsets that are the most homogenous. distances is a list of tuples with three items; time-series id, distance from the tested shapelet, and the time-series' classification, where 1 and 0 are belong and other classes relative to the donor time-series. Set_entropy is the entropy of the set before splitting.
     """
     distances.sort(key=itemgetter(1))
     best_gain_split=0
