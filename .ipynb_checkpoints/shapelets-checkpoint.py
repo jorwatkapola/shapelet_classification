@@ -22,24 +22,27 @@ def generate_shapelets(light_curve, minlen, maxlen, time_res=1.):
 def information_gain(distances, set_entropy, split_point):
     """Calculate the information gain from splitting the dichotomous set of time-series objects into subsets below and above the split_point, depending on their distances to the tested shapelet. "distances" is a list of tuples, where each tuple corresponds to a time-series object, and distances[i][0] is the id number of the ith object, distances[i][1] is the minimal distance between the shapelet and the object, distances[i][2] is equal to 1 if the object belongs to the tested object class, or to 0 otherwise (other_class objects). Information gain is dependent on the entropy of the entire set and the split set, where entropy is I(set)=-Alog2(A)-Blog2(B) (A=proportion of object in the set that belong to the class, B=proportion of other objects). Information gain is then I(set)-
     """
-    if split_point !=0 and split_point !=np.inf:
+    try:
         above=[lc for lc in distances if lc[1]>=split_point]
         above_belong=sum([lc[2] for lc in above])
         below=[lc for lc in distances if lc[1]<split_point]
         below_belong=sum([lc[2] for lc in below])
         prop_above_belong=above_belong/len(above)
         prop_below_belong=below_belong/len(below)
+        #entropy of the subgroup above the split point
         if prop_above_belong==1. or prop_above_belong==0.:
             above_entropy=0
         else:
             above_entropy = -(prop_above_belong)*math.log2(prop_above_belong)-(1-prop_above_belong)*math.log2(1-prop_above_belong)
+        #entropy of the subgroup below the split point
         if prop_below_belong==1. or prop_below_belong==0.:
             below_entropy =0
         else:
             below_entropy = -(prop_below_belong)*math.log2(prop_below_belong)-(1-prop_below_belong)*math.log2(1-prop_below_belong)
-        return set_entropy-(len(above)/(len(above)+len(below)))*(above_entropy)-(len(below)/(len(above)+len(below)))*(below_entropy)
-    else:
-        return "Invalid split point (0 or infinity)."
+        #return the information gain as the difference between the entropy of the entire set and the sum of entropies of subgroups generated from that set
+        return set_entropy-(len(above)/(len(distances)))*(above_entropy)-(len(below)/(len(distances)))*(below_entropy)
+    except ZeroDivisionError:
+        return "Invalid split point."
 
 def distance_calculation(shapelet, lc, time_res=1., early_abandon=False):
     """finds minimal distance between a light curve and a shapelet. lc is the light curve 2d array (lc[0] time values and lc[1] count rate values), time_res can be changed if the time resolution of the time-series is different than 1s (needs to be checked to make sure that distance is calculated only within good time intervals),  
@@ -78,9 +81,9 @@ def distance_calculation(shapelet, lc, time_res=1., early_abandon=False):
         return (best_dist)
     
 def best_split_point(distances, set_entropy):
+    """find a threshold distance that splits the provided set in a way that produces the best possible information gain, i.e. two subsets that are the most homogenous. distances is a list of tuples with three items; time-series id, distance from the tested shapelet, and the time-series' classification, where 1 and 0 are belong and other classes relative to the donor time-series. Set_entropy is the entropy of the set before splitting.
     """
-    """
-    distances.sort(key=itemgetter(1))
+    distances.sort(key=itemgetter(1))#ascending sort of distance values 
     best_gain_split=0
     best_split=0
     for distance in range(len(distances)-1):
