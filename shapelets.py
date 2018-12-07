@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from operator import itemgetter
-from copy import copy
+from copy import deepcopy
 
 def generate_shapelets(light_curve, minlen, maxlen, time_res=1.):
     """Create a list of all possible subsegments from light_curve, which is a 2D array, where [0,:] are the time values in seconds, and [1,:] are the count rate values. minlen and maxlen are the lower and upper limits of subsegment length in the unit of seconds. Output is a list of 1D arrays.The shortest shapelet will be an array of length minlen+1 etc. time_res is the time interval between two data points in seconds, so that for time_res=0.5 and minlen=100, the smallest produced shapelet would be an array of length (100/0.5)+1.
@@ -97,11 +97,11 @@ def best_split_point(distances, set_entropy):
     return best_split
 
 def entropy_pruning(best_gain, distances, best_split, belong_class_count, other_class_count, set_entropy):
-    """
+    """Calculate information gain based on the incomplete set of distances and the assumption of a best case scenario for the remaining distances (all remaining belong_class objects below the threshold and other_class above the threshold). If the best case scenario achieves a larger information gain than the best value found so far, then False is returned and the shapelet is not pruned; distance calculations continue. Otherwise True is returned, indicating that the shapelet should be abandoned. best_gain is the best so far value of information gain, distances is a list of tuples that contain the time series id, distance to the shapelet and classification (1/0, belong/other), best_split is the split distance/threshold, belong_class_count and other_class_count are the numbers of objects in the entire set with the relevant classification, and set_entropy is the entropy of the set before splitting, required for the information gain calculation.
     """
     calc_belong=sum([lc[2] for lc in distances])
     calc_other=len(distances)-calc_belong
-    distances_bcs=copy(distances) #best case scenario when all the distances are included
+    distances_bcs=deepcopy(distances) #best case scenario when all the distances are included
     distances_bcs.sort(key=itemgetter(1))
     maxdist=distances_bcs[-1][1]+1
     for add_belong in range(belong_class_count-calc_belong):
@@ -112,7 +112,7 @@ def entropy_pruning(best_gain, distances, best_split, belong_class_count, other_
     if isinstance(gain_bcs, str) == True:
         return True
     else:
-        if gain_bcs<best_gain:
+        if gain_bcs<=best_gain:
             return True
         else:
             return False
