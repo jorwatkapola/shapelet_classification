@@ -33,12 +33,12 @@ def information_gain(distances, set_entropy, split_point):
         if prop_above_belong==1. or prop_above_belong==0.:
             above_entropy=0
         else:
-            above_entropy = -(prop_above_belong)*math.log2(prop_above_belong)-(1-prop_above_belong)*math.log2(1-prop_above_belong)
+            above_entropy = -(prop_above_belong)*math.log(prop_above_belong, 2)-(1-prop_above_belong)*math.log(1-prop_above_belong, 2)
         #entropy of the subgroup below the split point
         if prop_below_belong==1. or prop_below_belong==0.:
             below_entropy =0
         else:
-            below_entropy = -(prop_below_belong)*math.log2(prop_below_belong)-(1-prop_below_belong)*math.log2(1-prop_below_belong)
+            below_entropy = -(prop_below_belong)*math.log(prop_below_belong, 2)-(1-prop_below_belong)*math.log(1-prop_below_belong, 2)
         #return the information gain as the difference between the entropy of the entire set and the sum of entropies of subgroups generated from that set
         return set_entropy-(len(above)/(len(distances)))*(above_entropy)-(len(below)/(len(distances)))*(below_entropy)
     except ZeroDivisionError:
@@ -55,9 +55,10 @@ def distance_calculation(shapelet, lc, time_res=1., early_abandon=False):
             end_p=start_p+sha_l-1
             if lc[0,end_p]-lc[0,start_p] != (sha_l-1)*time_res:
                 continue
-            sha_dist=0
-            for i in range(sha_l):
-                sha_dist += (lc[1,i+start_p]-shapelet[i])**2
+            sha_dist=(np.sum(shapelet-lc[1,start_p:end_p+1]))**2
+            #sha_dist=0
+            #for i in range(sha_l):
+                #sha_dist += (lc[1,i+start_p]-shapelet[i])**2
             if sha_dist<best_dist:
                 best_dist=sha_dist
         return (best_dist)

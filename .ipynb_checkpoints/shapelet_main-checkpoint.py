@@ -1,18 +1,17 @@
+from __future__ import division
 import importlib
 import shapelets as sha
-importlib.reload(sha)
 import os
 import fnmatch
 import numpy as np
-from sklearn.preprocessing import normalize
 from sklearn.model_selection import train_test_split
 from collections import Counter
 import csv
 from sklearn import tree
 import sys
 sys.stdout.flush()
+import math
 
-ob_state=sha.import_labels('1915Belloniclass_updated.dat', "_std1_lc.txt")
 clean_belloni = open('1915Belloniclass_updated.dat')
 lines = clean_belloni.readlines()
 states = lines[0].split()
@@ -25,22 +24,10 @@ for state, obs in belloni_clean.items():
     if state == "chi1" or state == "chi2" or state == "chi3" or state == "chi4": state = "chi"
     for ob in obs:
         ob_state[ob] = state
-        
-states=[]
-for obID, state in ob_state.items():
-    if state not in states:
-        states.append(state)
-counts=np.zeros(len(states))
-for obID, state in ob_state.items():
-    if obID in pool:
-        counts[np.where(np.array(states)==state)]+=1
-state_count=[]
-for i, state in enumerate(states):
-    state_count.append((state,counts[i]))
 
 available = []
 pool=[]
-for root, dirnames, filenames in os.walk("/home/jkok1g14/Documents/GRS1915+105/data/Std1_PCU2"):
+for root, dirnames, filenames in os.walk("/export/data/jakubok/GRS1915+105/Std1_PCU2"):
     for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
         available.append(filename)
 for ob, state in ob_state.items():
@@ -51,7 +38,7 @@ for ob, state in ob_state.items():
 lc_dirs=[]
 lcs=[]
 ids=[]
-for root, dirnames, filenames in os.walk("/home/jkok1g14/Documents/GRS1915+105/data/Std1_PCU2"):    
+for root, dirnames, filenames in os.walk("/export/data/jakubok/GRS1915+105/Std1_PCU2"):    
     for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
         if filename.split("_")[0] in pool:
             lc_dirs.append(os.path.join(root, filename))
@@ -101,13 +88,14 @@ for n, lc in enumerate(lc_classes):
     if lc not in drop_classes:
         classes_abu.append(lc)
         lcs_abu.append(lcs[n])
-        ids_abu.append(ids[n])
-        
+        ids_abu.append(ids[n])  
 x_train, x_test, y_train, y_test, id_train, id_test = train_test_split(lcs_abu, classes_abu, ids_abu, test_size=0.5, random_state=0, stratify=classes_abu)
+print(len(x_train), len(y_test))
 
 best_shapelets=[]
 time_res=1
 for n_donor, lc_donor in enumerate(x_train):
+    print(n_donor)
     #Create lists with classifications of all time-series relative to the donor time series; one that the pool of shapelets is generated from
     state_donor = y_train[n_donor]
     belong_class=[]
@@ -117,11 +105,16 @@ for n_donor, lc_donor in enumerate(x_train):
             belong_class.append(i)
         else:
             other_class.append(i)
+    print(len(belong_class), len(other_class))
     #calculate the entropy of the entire set, so it can be compared to the split set later
+    print(state_donor)
     prop_belong = len(belong_class)/(len(belong_class)+len(other_class))
-    set_entropy = -(prop_belong)*math.log2(prop_belong)-(1-prop_belong)*math.log2(1-prop_belong)
+    print(prop_belong)
+    set_entropy = -(prop_belong)*math.log(prop_belong, 2)-(1-prop_belong)*math.log(1-prop_belong, 2)
+    print(set_entropy)
     pool=sha.generate_shapelets(lc_donor, 1, len(lc_donor[0]))#generate shapelets from the donor time-series, 
     #set the initial best value of information gain to 0 (improved by any split) and start testing the shapelets
+    print(len(pool))
     best_gain=0
     for shapelet in pool:
         skip_shapelet=False#for entropy pruning

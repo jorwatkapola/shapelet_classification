@@ -1,18 +1,17 @@
+from __future__ import division
 import importlib
 import shapelets as sha
-importlib.reload(sha)
 import os
 import fnmatch
 import numpy as np
-from sklearn.preprocessing import normalize
 from sklearn.model_selection import train_test_split
 from collections import Counter
 import csv
 from sklearn import tree
 import sys
 sys.stdout.flush()
+import math
 
-ob_state=sha.import_labels('1915Belloniclass_updated.dat', "_std1_lc.txt")
 clean_belloni = open('1915Belloniclass_updated.dat')
 lines = clean_belloni.readlines()
 states = lines[0].split()
@@ -25,21 +24,12 @@ for state, obs in belloni_clean.items():
     if state == "chi1" or state == "chi2" or state == "chi3" or state == "chi4": state = "chi"
     for ob in obs:
         ob_state[ob] = state
-        
-states=[]
-for obID, state in ob_state.items():
-    if state not in states:
-        states.append(state)
-counts=np.zeros(len(states))
-for obID, state in ob_state.items():
-    if obID in pool:
-        counts[np.where(np.array(states)==state)]+=1
-state_count=[]
-for i, state in enumerate(states):
-    state_count.append((state,counts[i]))
 
 available = []
 pool=[]
+
+#/home/jkok1g14/Documents/GRS1915+105/data
+#/export/data/jakubok/GRS1915+105/Std1_PCU2
 for root, dirnames, filenames in os.walk("/export/data/jakubok/GRS1915+105/Std1_PCU2"):
     for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
         available.append(filename)
@@ -101,8 +91,7 @@ for n, lc in enumerate(lc_classes):
     if lc not in drop_classes:
         classes_abu.append(lc)
         lcs_abu.append(lcs[n])
-        ids_abu.append(ids[n])
-        
+        ids_abu.append(ids[n])  
 x_train, x_test, y_train, y_test, id_train, id_test = train_test_split(lcs_abu, classes_abu, ids_abu, test_size=0.5, random_state=0, stratify=classes_abu)
 
 best_shapelets=[]
@@ -119,7 +108,7 @@ for n_donor, lc_donor in enumerate(x_train):
             other_class.append(i)
     #calculate the entropy of the entire set, so it can be compared to the split set later
     prop_belong = len(belong_class)/(len(belong_class)+len(other_class))
-    set_entropy = -(prop_belong)*math.log2(prop_belong)-(1-prop_belong)*math.log2(1-prop_belong)
+    set_entropy = -(prop_belong)*math.log(prop_belong, 2)-(1-prop_belong)*math.log(1-prop_belong, 2)
     pool=sha.generate_shapelets(lc_donor, 1, len(lc_donor[0]))#generate shapelets from the donor time-series, 
     #set the initial best value of information gain to 0 (improved by any split) and start testing the shapelets
     best_gain=0
@@ -142,7 +131,7 @@ for n_donor, lc_donor in enumerate(x_train):
                 distance = 0
             else:
                 lc=x_train[np.where(np.array(id_train)==n_lc)[0][0]]
-                distance=sha.distance_calculation(shapelet, lc, early_abandon=True)
+                distance=sha.distance_calculation(shapelet, lc, early_abandon=False)
             #save the distance value together with the classification and lightcurve id
             if n_lc in belong_class:
                 class_assign=1
