@@ -55,7 +55,7 @@ def distance_calculation(shapelet, lc, time_res=1., early_abandon=False):
             end_p=start_p+sha_l-1
             if lc[0,end_p]-lc[0,start_p] != (sha_l-1)*time_res:
                 continue
-            sha_dist=(np.sum(shapelet-lc[1,start_p:end_p+1]))**2
+            sha_dist=np.sum((shapelet-lc[1,start_p:end_p+1])**2)
             #sha_dist=0
             #for i in range(sha_l):
                 #sha_dist += (lc[1,i+start_p]-shapelet[i])**2
