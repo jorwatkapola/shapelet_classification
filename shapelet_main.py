@@ -1,3 +1,4 @@
+#time series and light curve are used interchangeably below 
 from __future__ import division
 import importlib
 import shapelets as sha
@@ -64,10 +65,9 @@ for lc in lc_dirs:
     f=np.loadtxt(lc)
     f=np.transpose(f)#,axis=1)
     f=f[0:2]
-    ###1s average and time check to eliminate points outside of GTIs
+    ###1s average and time check to eliminate points outside of GTIs; 1s binning
     f8t = np.mean(f[0][:(len(f[0])//8)*8].reshape(-1, 8), axis=1)
     f8c = np.mean(f[1][:(len(f[1])//8)*8].reshape(-1, 8), axis=1)
-    #f8c=f8c-np.mean(f8c)#normalisation/mean centering/whatever you desire most
     rm_points = []
     skip=False
     for i in range(len(f8t)-1):
@@ -79,7 +79,6 @@ for lc in lc_dirs:
             rm_points.append(i+1)
             skip=True
             
-
 ####### due to the energy integration in Std1 diefferences between different epochs shouldn't matter; there would be very few photons found at the extremes of the range            
     times=np.delete(f8t,rm_points)
     counts=np.delete(f8c,rm_points)
@@ -170,6 +169,7 @@ for n_donor, lc_donor in enumerate(x_train):
     print((best_shapelet, best_split, best_gain, id_train[n_donor], state_donor))
     best_shapelets.append((best_shapelet, best_split, best_gain, id_train[n_donor], state_donor))
 
+#calculate the minimal distances between the best shapelets and the training time series
 train_dists=np.zeros((len(x_train),len(best_shapelets)))
 for i_t, t in enumerate(x_train):
     for i_s, s in enumerate(best_shapelets):
@@ -177,6 +177,7 @@ for i_t, t in enumerate(x_train):
         train_dists[i_t,i_s]=distance
 print("train_dists\n", train_dists)
 
+#calculate the minimal distances between the best shapelets and the test time series
 test_dists=np.zeros((len(x_test),len(best_shapelets)))
 for i_t, t in enumerate(x_test):
     for i_s, s in enumerate(best_shapelets):
@@ -184,13 +185,13 @@ for i_t, t in enumerate(x_test):
         test_dists[i_t,i_s]=distance
 print("test_dists\n",test_dists)
 
-
+#fit a decision tree to the training distances and predict the classification of training time series
 dtc=tree.DecisionTreeClassifier(criterion="entropy")
 dtc.fit(train_dists, y_train)
 train_inference= dtc.score(train_dists)
 print("train_inference_score\n",train_inference)
 
-dtc.fit(train_dists, y_train)
+#use the tree to predict the classification of test time series
 inference= dtc.predict(test_dists)
 print("test_inference\n", inference)
 score=[]
