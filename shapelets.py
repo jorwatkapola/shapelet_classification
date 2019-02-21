@@ -137,3 +137,66 @@ def import_labels(file_name, id_extension):
     #xp10408013100_lc.txt classified as chi1 and chi4, xp20402011900_lc.txt as chi2 and chi2
     #del ob_state["10408-01-31-00{}".format(extension)] as long as training and test sets are checked for duplicates when appending, it should be ok to keep
     
+def scaling(data, method, no_sigma=5, center="minimum"):
+    """ Normalise or standardise the y-values of time series.
+    method =    "normal" for normalisation y_i_norm = (y_i - y_center)/(y_max - y_min), where y_center is either y_mean or y_min as dictated                    by center argument
+                "standard" for standardisation y_i_stand = (y_i - y_mean)/y_std
+    no_sigma = the value of sigma to be assumed as the maximum value of y (to truncate the outliers).
+    center =    "minimum" for min-max normalisation
+                "mean" for mean normalisation
+    """
+    data_dims = np.shape(data[0])[0]
+    all_counts=[]
+    if data_dims == 2:
+        for lc in data:
+            all_counts.append(lc[1])
+    else:
+        all_counts=data
+    all_counts_ar=np.concatenate(all_counts, axis=0)
+    armean=np.mean(all_counts_ar)
+    arstd=np.std(all_counts_ar)
+    armedian=np.median(all_counts_ar)
+    armin=np.min(all_counts_ar)
+    armax=armean+no_sigma*arstd
+    
+    lcs_std=[]
+    if method == "normal":
+        if center == "minimum":
+            center=armin
+        elif center == "mean":
+            center=armean
+        else:
+            print("{} is not a valid center".format(center))
+            return
+        if data_dims == 2:
+            for ts in data:
+                lc=np.copy(ts)
+                lc[1]=(lc[1]-center)/(armax-armin)
+                over_max=np.where(lc[1]>1.)[0]
+                lc[1][over_max]=1.
+                lcs_std.append(lc)
+        else:
+            for ts in data:
+                lc=np.copy(ts)
+                lc=(lc-center)/(armax-armin)
+                over_max=np.where(lc>1.)[0]
+                lc[over_max]=1.
+                lcs_std.append(lc)
+        return lcs_std
+    
+    elif method == "standard":
+        if data_dims == 2:
+            for ts in data:
+                lc=np.copy(ts)
+                lc[1]=(lc[1]-armean)/arstd
+                lcs_std.append(lc)
+        else:
+            for ts in data:
+                lc=np.copy(ts)
+                lc=(lc-armean)/arstd
+                lcs_std.append(lc)
+        return lcs_std
+    
+    else:
+        print("{} is not a valid method".format(method))
+        return

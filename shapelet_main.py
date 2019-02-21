@@ -105,7 +105,7 @@ for n, lc in enumerate(lc_classes):
         ids_abu.append(ids[n])  
 #a list of light curve 2D arrays of classes with at least 7 light curves
 
-lcs_abu_std=sc.scaling(lcs_abu, method="standard")
+lcs_abu_std=sha.scaling(lcs_abu, method="standard")
 # data is standardised, x_i_stand = (x_i - x_mean)/x_std
 # mean+n*sigma is going to be the assumed maximum count rate that will be used to normalise the data
         
