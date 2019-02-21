@@ -12,16 +12,6 @@ import sys
 sys.stdout.flush()
 import math
 
-#set the data directory path depending on the workstation being used
-cwd = os.getcwd()
-if cwd.split("/")[1] == "home":
-    data_path="/home/jkok1g14/Documents/GRS1915+105/data/Std1_PCU2"
-elif cwd.split("/")[1] == "export":
-    data_path="/export/data/jakubok/GRS1915+105/Std1_PCU2"
-else:
-    print("Set the path for data directory!", Flush=True)
-
-#load the file with data labels (observation ID against the class of activity)
 clean_belloni = open('1915Belloniclass_updated.dat')
 lines = clean_belloni.readlines()
 states = lines[0].split()
@@ -31,17 +21,16 @@ for h,l in zip(states, lines[1:]):
     #state: obsID1, obsID2...
 ob_state = {}
 for state, obs in belloni_clean.items():
-    #merge the chi classes of different variability into one
     if state == "chi1" or state == "chi2" or state == "chi3" or state == "chi4": state = "chi"
     for ob in obs:
         ob_state[ob] = state
-        #keys of observation IDs, single item with the classification
 
 available = []
 pool=[]
 
-#find the available data for the classified observations
-for root, dirnames, filenames in os.walk(data_path):
+#/home/jkok1g14/Documents/GRS1915+105/data
+#/export/data/jakubok/GRS1915+105/Std1_PCU2
+for root, dirnames, filenames in os.walk("/export/data/jakubok/GRS1915+105/Std1_PCU2"):
     for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
         available.append(filename)
 for ob, state in ob_state.items():
@@ -52,7 +41,7 @@ for ob, state in ob_state.items():
 lc_dirs=[]
 lcs=[]
 ids=[]
-for root, dirnames, filenames in os.walk(data_path):    
+for root, dirnames, filenames in os.walk("/export/data/jakubok/GRS1915+105/Std1_PCU2"):    
     for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
         if filename.split("_")[0] in pool:
             lc_dirs.append(os.path.join(root, filename))
@@ -67,7 +56,7 @@ for lc in lc_dirs:
     ###1s average and time check to eliminate points outside of GTIs
     f8t = np.mean(f[0][:(len(f[0])//8)*8].reshape(-1, 8), axis=1)
     f8c = np.mean(f[1][:(len(f[1])//8)*8].reshape(-1, 8), axis=1)
-    #f8c=f8c-np.mean(f8c)#normalisation/mean centering/whatever you desire most
+    f8c=f8c/np.max(f8c)
     rm_points = []
     skip=False
     for i in range(len(f8t)-1):
@@ -79,16 +68,16 @@ for lc in lc_dirs:
             rm_points.append(i+1)
             skip=True
             
-
-####### due to the energy integration in Std1 diefferences between different epochs shouldn't matter; there would be very few photons found at the extremes of the range            
+####### normalise the count rates! think about the effect of 0-1 normalisation on the distance calculation
+            
     times=np.delete(f8t,rm_points)
     counts=np.delete(f8c,rm_points)
     lcs.append(np.stack((times,counts)))
-#a list of light curve 2D arrays
-
+    
 lc_classes=[]
 for i in ids:
     lc_classes.append(ob_state[i])
+lc_classes
 
 drop_classes=[]
 for clas, no in Counter(lc_classes).items():
@@ -103,12 +92,6 @@ for n, lc in enumerate(lc_classes):
         classes_abu.append(lc)
         lcs_abu.append(lcs[n])
         ids_abu.append(ids[n])  
-#a list of light curve 2D arrays of classes with at least 7 light curves
-
-lcs_abu_std=sc.scaling(lcs_abu, method="standard")
-# data is standardised, x_i_stand = (x_i - x_mean)/x_std
-# mean+n*sigma is going to be the assumed maximum count rate that will be used to normalise the data
-        
 x_train, x_test, y_train, y_test, id_train, id_test = train_test_split(lcs_abu, classes_abu, ids_abu, test_size=0.5, random_state=0, stratify=classes_abu)
 
 best_shapelets=[]
