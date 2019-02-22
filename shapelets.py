@@ -139,7 +139,7 @@ def import_labels(file_name, id_extension):
     
 def scaling(data, method, no_sigma=5, center="minimum"):
     """ Normalise or standardise the y-values of time series.
-    method =    "normal" for normalisation y_i_norm = (y_i - y_center)/(y_max - y_min), where y_center is either y_mean or y_min as dictated                    by center argument
+    method =    "normal" for normalisation y_i_norm = (y_i - y_center)/(y_max - y_min), where y_center is either y_mean or y_min as dictated by center argument
                 "standard" for standardisation y_i_stand = (y_i - y_mean)/y_std
     no_sigma = the value of sigma to be assumed as the maximum value of y (to truncate the outliers).
     center =    "minimum" for min-max normalisation
