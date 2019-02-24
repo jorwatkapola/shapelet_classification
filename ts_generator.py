@@ -61,7 +61,7 @@ def generate(no_per_class, ts_len):
         dip_rads = np.linspace(0, np.pi, int(ts_len/2))
         dip_sin = np.sin(dip_rads)**2   
         ys[dip_start:dip_start+int(ts_len/2)]-=(np.copy(ys[dip_start:dip_start+int(ts_len/2)])-2)*dip_sin
-        ys[dip_start+int(0.75*len(dip_sin))]+=noisy(3)
+        ys[dip_start+int(0.66*len(dip_sin))]+=noisy(3)
         lcs.append(np.stack((xs,ys)))
         classes.append("epsilon")
     for i in range(no_per_class):
