@@ -1,16 +1,29 @@
-import sys
-sys.stdout.flush()
+#time series and light curve are used interchangeably below 
+from __future__ import division
+import importlib
+import shapelets as sha
 import os
 import fnmatch
 import numpy as np
-from astropy.io import fits
-import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from collections import Counter
+import csv
+from sklearn import tree
+import sys
+sys.stdout.flush()
 import math
-import shapelets as sha
-from operator import itemgetter
 
-#create a belloni_files list with names of files holding Belloni classified light curves
-clean_belloni = open(file_name)
+#set the data directory path depending on the workstation being used
+cwd = os.getcwd()
+if cwd.split("/")[1] == "home":
+    data_path="/home/jkok1g14/Documents/GRS1915+105/data/Std1_PCU2"
+elif cwd.split("/")[1] == "export":
+    data_path="/export/data/jakubok/GRS1915+105/Std1_PCU2"
+else:
+    print("Set the path for data directory!", Flush=True)
+
+#load the file with data labels (observation ID against the class of activity)
+clean_belloni = open('1915Belloniclass_updated.dat')
 lines = clean_belloni.readlines()
 states = lines[0].split()
 belloni_clean = {}
@@ -19,64 +32,30 @@ for h,l in zip(states, lines[1:]):
     #state: obsID1, obsID2...
 ob_state = {}
 for state, obs in belloni_clean.items():
+    #merge the chi classes of different variability into one
     if state == "chi1" or state == "chi2" or state == "chi3" or state == "chi4": state = "chi"
     for ob in obs:
         ob_state[ob] = state
-return ob_state
-#xp10408013100_lc.txt classified as chi1 and chi4, xp20402011900_lc.txt as chi2 and chi2
-#del ob_state["10408-01-31-00{}".format(extension)] as long as training and test sets are checked for duplicates when appending, it should be ok to keep
+        #keys of observation IDs, single item with the classification
 
-#create lists of available light curves and those with available lables
 available = []
 pool=[]
-extension="_std1_lc.txt"
-for root, dirnames, filenames in os.walk("/home/jkok1g14/Documents/GRS1915+105/data/Std1_PCU2"):
-    for filename in fnmatch.filter(filenames, "*{}".format(extension)):
+
+#find the available data for the classified observations
+for root, dirnames, filenames in os.walk(data_path):
+    for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
         available.append(filename)
 for ob, state in ob_state.items():
-    if ob in available:
-        pool.append(ob)        
+    if ob+"_std1_lc.txt" in available:
+        pool.append(ob)  
 
-#split the observations into training and test sets
-training_obs = []
-training_states = []
-test_obs = []
-test_states = []
-randomize = np.random.choice(list(ob_state.keys()), len(ob_state.keys()), replace=False)
-for ob in randomize:
-    state = ob_state["{}".format(ob)]
-    if state not in training_states:
-        if ob in pool:
-            training_obs.append(ob)
-            training_states.append(state)
-no_train = math.ceil(len(pool)*0.50)
-for ob in training_obs:
-    pool.remove("{}".format(ob))        
-for ob in randomize:
-    state = ob_state["{}".format(ob)]
-    if state not in test_states:
-        if ob in pool:
-            test_obs.append(ob)
-            test_states.append(state)
-for ob in test_obs:
-    pool.remove("{}".format(ob))
-remaining = int(no_train-len(training_obs))
-train_remain = np.random.choice(pool, size = remaining, replace=False)
-for ob in train_remain:
-    training_obs.append(ob)
-for ob in pool:
-    if ob not in training_obs:
-        test_obs.append(ob)
-        
-        
 #create a list of arrays with time and counts for the set of Belloni classified observations
 lc_dirs=[]
 lcs=[]
 ids=[]
-#for root, dirnames, filenames in os.walk("/export/data/jakubok/GRS1915+105/Std1_PCU2"):
-for root, dirnames, filenames in os.walk("/home/jkok1g14/Documents/GRS1915+105/data/Std1_PCU2"):    
-    for filename in fnmatch.filter(filenames, "*{}".format(extension)):
-        if filename.split("_")[0] in list(ob_state.keys()):
+for root, dirnames, filenames in os.walk(data_path):    
+    for filename in fnmatch.filter(filenames, "*_std1_lc.txt"):
+        if filename.split("_")[0] in pool:
             lc_dirs.append(os.path.join(root, filename))
 
             
@@ -86,7 +65,7 @@ for lc in lc_dirs:
     f=np.loadtxt(lc)
     f=np.transpose(f)#,axis=1)
     f=f[0:2]
-    ###1s average and time check to eliminate points outside of GTIs
+    ###1s average and time check to eliminate points outside of GTIs; 1s binning
     f8t = np.mean(f[0][:(len(f[0])//8)*8].reshape(-1, 8), axis=1)
     f8c = np.mean(f[1][:(len(f[1])//8)*8].reshape(-1, 8), axis=1)
     rm_points = []
@@ -100,28 +79,37 @@ for lc in lc_dirs:
             rm_points.append(i+1)
             skip=True
             
-####### normalise the count rates! think about the effect of 0-1 normalisation on the distance calculation
-            
+####### due to the energy integration in Std1 diefferences between different epochs shouldn't matter; there would be very few photons found at the extremes of the range            
     times=np.delete(f8t,rm_points)
     counts=np.delete(f8c,rm_points)
     lcs.append(np.stack((times,counts)))
-    break
-print("No. of light curves prepared: {}".format(len(lcs)))
+#a list of light curve 2D arrays
 
+lc_classes=[]
+for i in ids:
+    lc_classes.append(ob_state[i])
 
+drop_classes=[]
+for clas, no in Counter(lc_classes).items():
+    if no<7:
+        drop_classes.append(clas)
 
+lcs_abu = []
+classes_abu = []
+ids_abu = []
+for n, lc in enumerate(lc_classes):
+    if lc not in drop_classes:
+        classes_abu.append(lc)
+        lcs_abu.append(lcs[n])
+        ids_abu.append(ids[n])  
+#a list of light curve 2D arrays of classes with at least 7 light curves
 
+lcs_abu_std=sha.scaling(lcs_abu, method="standard")
+# data is standardised, x_i_stand = (x_i - x_mean)/x_std
+# mean+n*sigma is going to be the assumed maximum count rate that will be used to normalise the data
+        
+x_train, x_test, y_train, y_test, id_train, id_test = train_test_split(lcs_abu, classes_abu, ids_abu, test_size=0.5, random_state=0, stratify=classes_abu)
 
-
-
-
-
-
-
-
-
-#create a pool of shapelets for the set of light curves, best_shapelets contains one shapelet from every light curve that produced the greatest information gain
-tested_classes=[]
 best_shapelets=[]
 time_res=1
 for n_donor, lc_donor in enumerate(x_train):
@@ -136,9 +124,10 @@ for n_donor, lc_donor in enumerate(x_train):
             other_class.append(i)
     #calculate the entropy of the entire set, so it can be compared to the split set later
     prop_belong = len(belong_class)/(len(belong_class)+len(other_class))
-    set_entropy = -(prop_belong)*math.log2(prop_belong)-(1-prop_belong)*math.log2(1-prop_belong)
+    set_entropy = -(prop_belong)*math.log(prop_belong, 2)-(1-prop_belong)*math.log(1-prop_belong, 2)
     pool=sha.generate_shapelets(lc_donor, 1, len(lc_donor[0]))#generate shapelets from the donor time-series, 
-    best_gain=0#set the initial best value of information gain to 0 (improved by any split) 
+    #set the initial best value of information gain to 0 (improved by any split) and start testing the shapelets
+    best_gain=0
     for shapelet in pool:
         skip_shapelet=False#for entropy pruning
         #set the order of distance calculations
@@ -154,23 +143,63 @@ for n_donor, lc_donor in enumerate(x_train):
         #start distance calculations
         distances=[]
         for n_lc in order:
-            lc=x_train[np.where(np.array(id_train)==n_lc)[0][0]]
-            distance=sha.distance_calculation(shapelet, lc)
+            if id_train[n_donor] == n_lc:
+                distance = 0
+            else:
+                lc=x_train[np.where(np.array(id_train)==n_lc)[0][0]]
+                distance=sha.distance_calculation(shapelet, lc, early_abandon=False)
+            #save the distance value together with the classification and lightcurve id
             if n_lc in belong_class:
                 class_assign=1
             else:
                 class_assign=0
             distances.append((n_lc ,distance, class_assign))
+            #find the optimal split point if there are at least two distances calculated, then use entropy pruning to find if the shapelet still has a change to beat the best one found so far
             if len(distances)>1:
                 best_split=sha.best_split_point(distances, set_entropy)
                 skip_shapelet=sha.entropy_pruning(best_gain, distances, best_split, len(belong_class), len(other_class), set_entropy)
                 if skip_shapelet==True:
                     break
+        #if shapelet was not rejected at entropy pruning, calculcate the information gain and if the value is larger then the best one so far, save the shapelet
         if skip_shapelet==False:
             gain=sha.information_gain(distances, set_entropy, best_split)
-            #print(shapelet)
-            #print(distances)
             if gain>best_gain:
                 best_gain=gain
                 best_shapelet=shapelet
-    best_shapelets.append((best_shapelet, best_split, id_train[n_donor], state_donor))
+    print((best_shapelet, best_split, best_gain, id_train[n_donor], state_donor))
+    best_shapelets.append((best_shapelet, best_split, best_gain, id_train[n_donor], state_donor))
+
+#calculate the minimal distances between the best shapelets and the training time series
+train_dists=np.zeros((len(x_train),len(best_shapelets)))
+for i_t, t in enumerate(x_train):
+    for i_s, s in enumerate(best_shapelets):
+        distance=sha.distance_calculation(s[0], t, early_abandon=False)
+        train_dists[i_t,i_s]=distance
+print("train_dists\n", train_dists)
+
+#calculate the minimal distances between the best shapelets and the test time series
+test_dists=np.zeros((len(x_test),len(best_shapelets)))
+for i_t, t in enumerate(x_test):
+    for i_s, s in enumerate(best_shapelets):
+        distance=sha.distance_calculation(s[0], t, early_abandon=False)
+        test_dists[i_t,i_s]=distance
+print("test_dists\n",test_dists)
+
+#fit a decision tree to the training distances and predict the classification of training time series
+dtc=tree.DecisionTreeClassifier(criterion="entropy")
+dtc.fit(train_dists, y_train)
+train_inference= dtc.score(train_dists)
+print("train_inference_score\n",train_inference)
+
+#use the tree to predict the classification of test time series
+inference= dtc.predict(test_dists)
+print("test_inference\n", inference)
+score=[]
+for n, i in enumerate(inference):
+    if i ==y_test[n]:
+        score.append(1)
+    else:
+        score.append(0)
+score=np.array(score)
+print("test_inference_score\n",np.mean(score))
+
